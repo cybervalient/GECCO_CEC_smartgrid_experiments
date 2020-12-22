@@ -1,0 +1,287 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Function:         [FVr_bestmem,S_bestval,I_nfeval] = deopt(fname,S_struct)
+% Author:           Rainer Storn, Ken Price, Arnold Neumaier, Jim Van Zandt
+% Modified by FLC \GECAD 04/winter/2017
+
+function [Fit_and_p,FVr_bestmemit, fitMaxVector, Best_otherInfo] = ...
+    ABC__DE(deParameters,caseStudyData,otherParameters,low_habitat_limit,up_habitat_limit)
+
+%-----This is just for notational convenience and to keep the code uncluttered.--------
+
+I_NP         = deParameters.I_NP; %numero de individuos
+I_D          = numel(up_habitat_limit); %Number of variables or dimension
+deParameters.nVariables=I_D;
+FVr_minbound = low_habitat_limit;
+FVr_maxbound = up_habitat_limit;
+I_itermax    = deParameters.I_itermax;
+F1    = deParameters.F1;
+L=deParameters.L;
+
+%Repair boundary method employed
+BRM=deParameters.I_bnd_constr; %1: bring the value to bound violated
+                               %2: repair in the allowed range
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%I_strategy   = deParameters.I_strategy; %important variable
+fnc=  otherParameters.fnc;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%-----Check input variables---------------------------------------------
+if (I_NP < 5)
+   I_NP=1;
+   fprintf(1,' I_NP increased to minimal value 5\n');
+end
+
+if (I_itermax <= 0)
+   I_itermax = 200;
+   fprintf(1,'I_itermax should be > 0; set to default value 200\n');
+end
+
+%-----Initialize population and some arrays-------------------------------
+%FM_pop = zeros(I_NP,I_D); %initialize FM_pop to gain speed
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% pre-allocation of loop variables
+fitMaxVector = zeros(1,I_itermax);
+% limit iterations by threshold
+gen = 1; %iterations
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%----FM_pop is a matrix of size I_NPx(I_D+1). It will be initialized------
+%----with random values between the min and max values of the-------------
+%----parameters-----------------------------------------------------------
+% FLC modification - vectorization
+minPositionsMatrix=repmat(FVr_minbound,I_NP,1);
+maxPositionsMatrix=repmat(FVr_maxbound,I_NP,1);
+deParameters.minPositionsMatrix=minPositionsMatrix;
+deParameters.maxPositionsMatrix=maxPositionsMatrix;
+FM_ui=zeros(I_NP,I_D);
+
+ %% Parametros del bee
+T=zeros(1,I_NP);%contador de la fuente de comida
+
+%% generate initial population.
+%rand('state',otherParameters.iRuns) %Guarantee same initial population
+FM_pop=genpop(I_NP,I_D,minPositionsMatrix,maxPositionsMatrix);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%------Evaluate the best member after initialization----------------------
+[solFitness_M, solPenalties_M,Struct_Eval]=feval(fnc,FM_pop,caseStudyData,otherParameters);
+%% Worse performance criterion
+[S_val, worstS]=max(solFitness_M,[],2);
+%sdsd=size(S_val)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+f_X=S_val;
+[S_bestval,I_best_index] = min(S_val); % This mean that the best individual correspond to the best worst performance
+FVr_bestmemit = FM_pop(I_best_index,:); % best member of current iteration
+fitMaxVector(1,gen) = S_bestval;
+
+Best_otherInfo.idBestParticle = I_best_index;
+Best_otherInfo.genCostsFinal = Struct_Eval(worstS(I_best_index)).otherParameters.genCosts(I_best_index,:);
+Best_otherInfo.loadDRcostsFinal = Struct_Eval(worstS(I_best_index)).otherParameters.loadDRcosts(I_best_index,:);
+Best_otherInfo.v2gChargeCostsFinal = Struct_Eval(worstS(I_best_index)).otherParameters.v2gChargeCosts(I_best_index,:);
+Best_otherInfo.v2gDischargeCostsFinal =Struct_Eval(worstS(I_best_index)).otherParameters.v2gDischargeCosts(I_best_index,:);
+Best_otherInfo.storageChargeCostsFinal = Struct_Eval(worstS(I_best_index)).otherParameters.storageChargeCosts(I_best_index,:);
+Best_otherInfo.storageDischargeCostsFinal = Struct_Eval(worstS(I_best_index)).otherParameters.storageDischargeCosts(I_best_index,:);
+Best_otherInfo.stBalanceFinal = Struct_Eval(worstS(I_best_index)).otherParameters.stBalance(I_best_index,:,:);
+Best_otherInfo.v2gBalanceFinal = Struct_Eval(worstS(I_best_index)).otherParameters.v2gBalance(I_best_index,:,:);
+Best_otherInfo.penSlackBusFinal = Struct_Eval(worstS(I_best_index)).otherParameters.penSlackBus(I_best_index,:);
+
+%------DE-Minimization---------------------------------------------
+%------FM_popold is the population which has to compete. It is--------
+%------static through one iteration. FM_pop is the newly-------------
+%------emerging population.----------------------------------------
+FVr_rot  = (1:1:I_NP);               % rotating index array (size I_NP)
+while gen<I_itermax %%&&  fitIterationGap >= threshold       
+%% FORAGER BEES
+for i=1:I_NP
+%% Selecting another food source    
+indices=randi(I_NP); %another food source
+       while indices==i;% if repited sourse
+             indices=randi(I_NP); %another food source
+       end
+ alpha_inclusicion=gen/I_itermax; % percentage for the mutated coordinate [0,1]
+ s=randi(I_D,round(alpha_inclusicion*I_D),1); % elements for the mutated coordinate (1..I_D)
+%% Mutated coordinate
+    for jk=1:size(s)
+        R=(-1+(1-(-1))*rand);
+        FM_ui(i,s(jk))=FM_pop(i,s(jk))+R*(FM_pop(i,s(jk))-FM_pop(indices,s(jk)));     
+    end
+end
+
+    %% Boundary Control
+    FM_ui=update(FM_ui,minPositionsMatrix,maxPositionsMatrix,BRM);
+       
+    %Evaluation of new Pop
+    [solFitness_M_temp, solPenalties_M_temp,Struct_Eval_temp]=feval(fnc,FM_ui,caseStudyData, otherParameters);
+    [S_val_temp, worstS]=max(solFitness_M_temp,[],2)
+
+%% SELECTION    
+ f_U=S_val_temp;
+for i=1:I_NP           
+    if f_U(i)<f_X(i) % The new solution is more interesting
+       f_X(i)=f_U(i); % The cost of the best solution is improved
+       FM_pop(i,:)=FM_ui(i,:);% The best solution is improved
+       T(i)=0; %The new solution is better
+    else
+        T(i)=T(i)+1;% The new solution is worse
+    end
+end
+
+%% ONLOOKER BEES  
+ for i=1:I_NP 
+     cruze =0; 
+    for padres = 1 : 1
+        Random_Cost =randi(I_NP);
+        Random_Cost1 =randi(I_NP);
+        while Random_Cost1==Random_Cost;
+              Random_Cost1 =randi(I_NP);
+        end
+              m_c=[f_X(Random_Cost) f_X(Random_Cost1)];
+              w=[Random_Cost Random_Cost1];
+              [~, s] = sort(m_c, 'ascend');
+       if rand<1-gen/I_itermax
+          cruze=w(s(1));
+       else
+          cruze=w(s(2));
+       end
+    end
+               
+ Parent=FM_pop(cruze,:);  %Choose the influencing food source     
+ indices=randi(I_NP); 
+       while indices==cruze;
+             indices=randi(I_NP);
+       end
+alpha_inclusicion=gen/I_itermax;
+s=randi(I_D,round(alpha_inclusicion*I_D),1);%Choose the modified coordinate
+%% Mutate the solution
+    for jk=1:size(s)
+        R=(-1+(1-(-1))*rand);
+        FM_ui(i,s(jk))=Parent(1,s(jk))+R*(Parent(1,s(jk))-FM_pop(indices,s(jk)));     
+    end
+ end 
+%% Boundary Control
+    FM_ui=update(FM_ui,minPositionsMatrix,maxPositionsMatrix,BRM);       
+%% %Evaluation of new Pop
+    [solFitness_M_temp, solPenalties_M_temp,Struct_Eval_temp]=feval(fnc,FM_ui,caseStudyData, otherParameters);
+     
+%% SELECTION    [S_val_temp, worstS]=max(solFitness_M_temp,[],2)
+ f_U=S_val_temp;
+for i=1:I_NP           
+    if f_U(i)<f_X(i) % The new solution is more interesting
+       f_X(i)=f_U(i); % The cost of the best solution is improved
+       FM_pop(i,:)=FM_ui(i,:);% The best solution is improved
+       T(i)=0; %The new solution is better
+    else
+        T(i)=T(i)+1;% The new solution is worse
+    end
+end
+%% update best results
+    [~,I_best_index]=min(f_X) ;
+    FVr_bestmemit = FM_pop(I_best_index,:); % best member of current iteration 
+      
+ %% SCOUT BEES
+for i=1:I_NP 
+    FM_ui(i,:)=FM_pop(i,:);
+    if  T(i)>L
+        indices=randi(I_NP,4,1);
+            for k=1:4
+                for l=1:4
+                    if k~=l
+                      if FM_pop(indices(k),:)==FM_pop(indices(l),:)
+                          indices(k)=randi(I_NP);
+                      end
+                      if FM_pop(indices(k),:)==FM_pop(i,:)
+                         indices(k)=randi(I_NP);
+                      end
+                    end
+                end
+            end
+             R1=indices(1); % Obtener numero aleatorios
+             R2=indices(2);
+             R3=indices(3);
+             R4=indices(4);
+        alpha_inclusicion=1-gen/I_itermax;
+        indices_cambio=randi(I_D,round(alpha_inclusicion*I_D),1);
+        FM_ui(i,indices_cambio)=FVr_bestmemit(1,indices_cambio)+F1*((FM_pop(R1,indices_cambio)+FM_pop(R2,indices_cambio)-FM_pop(R3,indices_cambio)-FM_pop(R4,indices_cambio)));                 
+        T(i)=0;
+    end  
+end
+     %% Boundary Control
+    FM_ui=update(FM_ui,minPositionsMatrix,maxPositionsMatrix,BRM);
+       
+    %Evaluation of new Pop
+    [solFitness_M_temp, solPenalties_M_temp,Struct_Eval_temp]=feval(fnc,FM_ui,caseStudyData, otherParameters);
+    [S_val_temp, worstS]=max(solFitness_M_temp,[],2)
+
+%% SELECTION    
+ f_U=S_val_temp;
+for i=1:I_NP           
+    if f_U(i)<f_X(i) % The new solution is more interesting
+       f_X(i)=f_U(i); % The cost of the best solution is improved
+       FM_pop(i,:)=FM_ui(i,:);% The best solution is improved
+       T(i)=0; %The new solution is better
+    else
+        T(i)=T(i)+1;% The new solution is worse
+    end
+end
+
+
+%% update best results
+    [S_bestval,I_best_index] = min(f_X);
+    FVr_bestmemit = FM_pop(I_best_index,:); % best member of current iteration   
+
+    %% Elitist Selection
+    ind=find(S_val_temp<S_val);
+    S_val(ind)=S_val_temp(ind);
+    FM_pop(ind,:)=FM_ui(ind,:);            
+   
+    fitMaxVector(1,gen)=S_bestval;    
+    
+    if ismember(I_best_index,ind)
+        % store other info
+        Best_otherInfo.idBestParticle = I_best_index;
+        Best_otherInfo.genCostsFinal = Struct_Eval_temp(worstS(I_best_index)).otherParameters.genCosts(I_best_index,:);
+        Best_otherInfo.loadDRcostsFinal = Struct_Eval_temp(worstS(I_best_index)).otherParameters.loadDRcosts(I_best_index,:);
+        Best_otherInfo.v2gChargeCostsFinal = Struct_Eval_temp(worstS(I_best_index)).otherParameters.v2gChargeCosts(I_best_index,:);
+        Best_otherInfo.v2gDischargeCostsFinal =Struct_Eval_temp(worstS(I_best_index)).otherParameters.v2gDischargeCosts(I_best_index,:);
+        Best_otherInfo.storageChargeCostsFinal = Struct_Eval_temp(worstS(I_best_index)).otherParameters.storageChargeCosts(I_best_index,:);
+        Best_otherInfo.storageDischargeCostsFinal = Struct_Eval_temp(worstS(I_best_index)).otherParameters.storageDischargeCosts(I_best_index,:);
+        Best_otherInfo.stBalanceFinal = Struct_Eval_temp(worstS(I_best_index)).otherParameters.stBalance(I_best_index,:,:);
+        Best_otherInfo.v2gBalanceFinal = Struct_Eval_temp(worstS(I_best_index)).otherParameters.v2gBalance(I_best_index,:,:);
+        Best_otherInfo.penSlackBusFinal = Struct_Eval_temp(worstS(I_best_index)).otherParameters.penSlackBus(I_best_index,:);
+        %fitMaxVector(:,gen)= [mean(solFitness_M_temp(I_best_index,:));mean(solPenalties_M_temp(I_best_index,:))];
+    elseif gen>1
+        fitMaxVector(:,gen)=fitMaxVector(:,gen-1);
+    end
+    
+    fprintf('Fitness value: %f\n',fitMaxVector(1,gen) )
+    fprintf('Generation: %d\n',gen)
+     gen=gen+1;    
+end %---end while ((I_iter < I_itermax) ...
+Fit_and_p=[fitMaxVector(1,gen) 1]; %;p2;p3;p4]
+
+% VECTORIZED THE CODE INSTEAD OF USING FOR
+function pop=genpop(a,b,lowMatrix,upMatrix)
+pop=unifrnd(lowMatrix,upMatrix,a,b);
+
+% VECTORIZED THE CODE INSTEAD OF USING FOR
+function p=update(p,lowMatrix,upMatrix,BRM)
+switch BRM
+    case 1 %Our method
+        %[popsize,dim]=size(p);
+        [idx] = find(p<lowMatrix);
+        p(idx)=lowMatrix(idx);
+        [idx] = find(p>upMatrix);
+        p(idx)=upMatrix(idx);
+    case 2 %Random reinitialization
+        [idx] = [find(p<lowMatrix);find(p>upMatrix)];
+        replace=unifrnd(lowMatrix(idx),upMatrix(idx),length(idx),1);
+        p(idx)=replace;
+    case 3 %Bounce Back
+      [idx] = find(p<lowMatrix);
+      p(idx)=unifrnd(lowMatrix(idx),FM_base(idx),length(idx),1);
+        [idx] = find(p>upMatrix);
+      p(idx)=unifrnd(FM_base(idx), upMatrix(idx),length(idx),1);
+end
+
