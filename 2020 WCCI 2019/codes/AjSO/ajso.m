@@ -15,7 +15,7 @@
 %% * Ryoji Tanabe and Alex Fukunaga: Improving the Search Performance of SHADE Using Linear Population Size Reduction,  Proc. IEEE Congress on Evolutionary Computation (CEC-2014), Beijing, July, 2014.
 %%%%%%%%%%%%%%%%%% 
 
-function [Fit_and_p,FVr_bestmemit, fitMaxVector] = ajso(deParameters,caseStudyData,otherParameters,low_habitat_limit,up_habitat_limit)
+function [Fit_and_p,FVr_bestmemit, fitMaxVector, Best_otherInfo] = ajso(deParameters,caseStudyData,otherParameters,low_habitat_limit,up_habitat_limit)
 
 I_NP         = deParameters.I_NP;
 I_D          = numel(up_habitat_limit); %Number of variables or dimension
@@ -41,8 +41,9 @@ memory_size = I_D;
 %% Initialize the main population
 FM_popold = unifrnd(minPositionsMatrix,maxPositionsMatrix,I_NP,I_D);
 pop = FM_popold ; % the old population becomes the current population
-[fitness, ~] = feval(fnc,pop,caseStudyData,otherParameters);
-[S_bestval,I_best_index] = min(fitness); % This mean that the best individual correspond to the best worst performance
+[fitness,  solPenalties_M, Struct_Eval] = feval(fnc,pop,caseStudyData,otherParameters);
+[S_val, worstS]=max(fitness,[],2);
+[S_bestval,I_best_index] = min(S_val); % This mean that the best individual correspond to the best worst performance
 FVr_bestmemit = pop(I_best_index,:); % best member of current iteration
 bsf_solution =  pop(I_best_index,:);
 bsf_fit_var= S_bestval;
@@ -62,6 +63,17 @@ archive.funvalues = fitness; % the function value of the archived solutions
 FVr_rot  = (0:1:I_NP-1); 
 num_reset = 1;
 solMinVector = zeros(I_evalmax/I_NP,I_D);
+
+Best_otherInfo.idBestParticle = I_best_index;
+Best_otherInfo.genCostsFinal = Struct_Eval(worstS(I_best_index)).otherParameters.genCosts(I_best_index,:);
+Best_otherInfo.loadDRcostsFinal = Struct_Eval(worstS(I_best_index)).otherParameters.loadDRcosts(I_best_index,:);
+Best_otherInfo.v2gChargeCostsFinal = Struct_Eval(worstS(I_best_index)).otherParameters.v2gChargeCosts(I_best_index,:);
+Best_otherInfo.v2gDischargeCostsFinal =Struct_Eval(worstS(I_best_index)).otherParameters.v2gDischargeCosts(I_best_index,:);
+Best_otherInfo.storageChargeCostsFinal = Struct_Eval(worstS(I_best_index)).otherParameters.storageChargeCosts(I_best_index,:);
+Best_otherInfo.storageDischargeCostsFinal = Struct_Eval(worstS(I_best_index)).otherParameters.storageDischargeCosts(I_best_index,:);
+Best_otherInfo.stBalanceFinal = Struct_Eval(worstS(I_best_index)).otherParameters.stBalance(I_best_index,:,:);
+Best_otherInfo.v2gBalanceFinal = Struct_Eval(worstS(I_best_index)).otherParameters.v2gBalance(I_best_index,:,:);
+Best_otherInfo.penSlackBusFinal = Struct_Eval(worstS(I_best_index)).otherParameters.penSlackBus(I_best_index,:);
 
 %% main loop
 while nfes + I_NP < I_evalmax
@@ -130,7 +142,10 @@ while nfes + I_NP < I_evalmax
     
     
     %% Evaluate two pop    
-    [children_fitness_s0, ~] = feval(fnc,vi_s0,caseStudyData,otherParameters);
+    [children_fitness_s0, solPenalties_M, Struct_Eval] = feval(fnc,vi_s0,caseStudyData,otherParameters);
+   
+  
+    
     nfes = nfes + I_NP;
     gen = gen + 1;
     for i = 1 : I_NP
@@ -143,7 +158,10 @@ while nfes + I_NP < I_evalmax
     fitMaxVector(1,gen) = bsf_fit_var;
     
     
-    [children_fitness_s1, ~] = feval(fnc,vi_s1,caseStudyData,otherParameters);
+    [children_fitness_s1, solPenalties_M, Struct_Eval] = feval(fnc,vi_s1,caseStudyData,otherParameters);
+   
+    
+    
     nfes = nfes + I_NP;
     gen = gen + 1;
     for i = 1 : I_NP
@@ -162,11 +180,14 @@ while nfes + I_NP < I_evalmax
             strategy =0;
             [fitness, I] = min([fitness, children_fitness_s0], [], 2);
             pop(I == 2, :) = vi_s0(I == 2, :);
-            
+             [S_val0, worstS]=max(children_fitness_s0,[],2);
+             [S_bestval,I_best_index] = min(S_val0);
         else
             strategy=1;
             [fitness, I] = min([fitness, children_fitness_s1], [], 2);
             pop(I == 2, :) = vi_s1(I == 2, :);
+             [S_val1, worstS]=max(children_fitness_s1,[],2);
+            [S_bestval,I_best_index] = min(S_val1);
     end
     
     %% 	Deepening stage: Using the best strategy, 8 modifications are made 
@@ -209,8 +230,9 @@ while nfes + I_NP < I_evalmax
         FM_mui = rand(I_NP,I_D) < cr;  % all random numbers < F_CR are 1, 0 otherwise
         FM_mpo = FM_mui < 0.5;    % inverse mask to FM_mui
         pbest = pop(sorted_index(randindex), :); %% randomly choose one of the top 100p% solutions
-
-
+          
+        I_best_indexes = (sorted_index(randindex));
+        I_best_index = I_best_indexes(1);
         switch (strategy)
             case 0
                 FVr_rt  = rem(FVr_rot+FVr_ind(1),I_NP);     % rotate indices by ind(1) positions
@@ -238,7 +260,9 @@ while nfes + I_NP < I_evalmax
         if(nfes + I_NP >= I_evalmax)
             break;
         end
-        [children_fitness, ~] = feval(fnc,vi,caseStudyData,otherParameters);
+        [children_fitness, solPenalties_M, Struct_Eval] = feval(fnc,vi,caseStudyData,otherParameters);
+        [S_val, worstS]=max(fitness,[],2);
+        
         gen = gen + 1;
         nfes = nfes + I_NP;
 
@@ -249,12 +273,12 @@ while nfes + I_NP < I_evalmax
             end
         end		  
 
-        I = (fitness > children_fitness);
+        I = (fitness > children_fitness(1));
         goodCR = cr(I == 1);  
         badCR = cr(I == 0);  
         goodF = sf(I == 1);
         badF = sf(I == 0);  
-        archive = updateArchive(archive, FM_popold(I == 1, :), fitness(I == 1));
+      %  archive = updateArchive(archive, FM_popold(I == 1, :), fitness(I == 1));
         [fitness, I] = min([fitness, children_fitness], [], 2);
 
         %% : Selection
@@ -307,11 +331,25 @@ while nfes + I_NP < I_evalmax
             archive.pop(randi(I_NP)) = solMinVector(num_reset);
             num_reset = num_reset +1;            
         end
+        
+        Best_otherInfo.idBestParticle = I_best_index;
+Best_otherInfo.genCostsFinal = Struct_Eval(worstS(I_best_index)).otherParameters.genCosts(I_best_index,:);
+Best_otherInfo.loadDRcostsFinal = Struct_Eval(worstS(I_best_index)).otherParameters.loadDRcosts(I_best_index,:);
+Best_otherInfo.v2gChargeCostsFinal = Struct_Eval(worstS(I_best_index)).otherParameters.v2gChargeCosts(I_best_index,:);
+Best_otherInfo.v2gDischargeCostsFinal =Struct_Eval(worstS(I_best_index)).otherParameters.v2gDischargeCosts(I_best_index,:);
+Best_otherInfo.storageChargeCostsFinal = Struct_Eval(worstS(I_best_index)).otherParameters.storageChargeCosts(I_best_index,:);
+Best_otherInfo.storageDischargeCostsFinal = Struct_Eval(worstS(I_best_index)).otherParameters.storageDischargeCosts(I_best_index,:);
+Best_otherInfo.stBalanceFinal = Struct_Eval(worstS(I_best_index)).otherParameters.stBalance(I_best_index,:,:);
+Best_otherInfo.v2gBalanceFinal = Struct_Eval(worstS(I_best_index)).otherParameters.v2gBalance(I_best_index,:,:);
+Best_otherInfo.penSlackBusFinal = Struct_Eval(worstS(I_best_index)).otherParameters.penSlackBus(I_best_index,:);
+
+        
         FVr_bestmemit = bsf_solution; 
         solMinVector(gen, : )= bsf_solution; 
         fitMaxVector(1,gen) = bsf_fit_var;
         fprintf('Fitness value: %f\n',bsf_fit_var);%%fitMaxVector(1,gen) )
-        fprintf('Eval: %d Strategy: %d, Check %d\n',nfes,strategy,check);        
+        fprintf('Eval: %d Strategy: %d, Check %d\n',nfes,strategy,check);   
+        
     end       
 end
    

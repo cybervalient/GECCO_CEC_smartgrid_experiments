@@ -21,12 +21,13 @@ clear all;clc;close all;
 tTotalTime=tic; % lets track total computational time
 addpath('CallDataBases','Functions') 
 
-Select_Algorithm=8;
+Select_Algorithm=9;
 %4: edaNC
 %5 ABC_DE
 %6 CE_CMAES
 %7 DEalg-1
 %8 GAPSO
+%9 AjSO
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Load MH parameters (e.g., get MH parameters from DEparameters.m file)
  switch Select_Algorithm
@@ -56,6 +57,11 @@ Select_Algorithm=8;
         algorithm='GAPSO'; %'The participants should include their algorithm here'
         DEparameters %Function defined by the participant
         No_solutions=deParameters.I_NP;
+       case 9
+        addpath('AjSO')
+        algorithm='AjSO'; %'The participants should include their algorithm here'
+        AjSOparameters %Function defined by the participant
+        No_solutions=deParameters.I_NP; 
          %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
          %Participants can include their algorithms here
          %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -136,6 +142,12 @@ ResDB=struc([]);
                     ResDB(iRuns).fitVector, ...
                     ResDB(iRuns).Best_otherInfo] =... 
                     GASAPSO(deParameters,caseStudyData,otherParameters,lowerB,upperB);
+                case 9
+                    [ResDB(iRuns).Fit_and_p, ...
+                    ResDB(iRuns).sol, ...
+                    ResDB(iRuns).fitVector, ...
+                    ResDB(iRuns).Best_otherInfo] =... 
+                    ajso(deParameters,caseStudyData,otherParameters,lowerB,upperB);
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     %Your algorithm can be put here
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
