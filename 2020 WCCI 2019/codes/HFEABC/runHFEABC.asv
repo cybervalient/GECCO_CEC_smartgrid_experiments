@@ -103,7 +103,7 @@ while ((iter <= maxCycle)),
         %evaluate new solution
         [ObjValSol, solPenalties_M,Struct_Eval]=feval(fnc,Foods,caseStudyData, otherParameters);
          [ObjValSol, worstS]=max(ObjValSol,[],2);
-         [ObjValSol,I_best_index] = min(ObjValSol);
+         [S_bestval,I_best_index] = min(ObjValSol);
        % Elitist Selection
        if (ObjValSol<ObjVal(i)) %/*If the mutant solution is better than the current solution i, replace the solution with the mutant and reset the trial counter of solution i*/
            Foods(i,:)=sol;
@@ -173,7 +173,6 @@ while ((iter <= maxCycle)),
             %evaluate new solution
             [ObjValSol, solPenalties_M,Struct_Eval]=feval(fnc,Foods,caseStudyData, otherParameters);
             [ObjValSol, worstS]=max(ObjValSol,[],2);
-            [ObjValSol,I_best_index] = min(ObjValSol);
             % /*a greedy selection is applied between the current solution i and its mutant*/
             if (ObjValSol<ObjVal(i)) %/*If the mutant solution is better than the current solution i, replace the solution with the mutant and reset the trial counter of solution i*/
                 Foods(i,:)=sol;
@@ -231,7 +230,6 @@ I_best_index =ind;
             %evaluate new solution
             [ObjValSol,solPenalties_M,Struct_Eval] = feval(fnc,Foods,caseStudyData, otherParameters);
             [ObjValSol, worstS]=max(ObjValSol,[],2);
-            [ObjValSol,I_best_index] = min(ObjValSol);
             Foods(i,:)=sol;
             ObjVal(i)=ObjValSol;
 

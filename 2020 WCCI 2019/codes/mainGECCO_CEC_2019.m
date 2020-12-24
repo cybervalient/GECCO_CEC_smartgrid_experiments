@@ -21,13 +21,14 @@ clear all;clc;close all;
 tTotalTime=tic; % lets track total computational time
 addpath('CallDataBases','Functions') 
 
-Select_Algorithm=9;
+Select_Algorithm=10;
 %4: edaNC
 %5 ABC_DE
 %6 CE_CMAES
 %7 DEalg-1
 %8 GAPSO
 %9 AjSO
+%10 HFEABC
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Load MH parameters (e.g., get MH parameters from DEparameters.m file)
  switch Select_Algorithm
@@ -62,6 +63,11 @@ Select_Algorithm=9;
         algorithm='AjSO'; %'The participants should include their algorithm here'
         AjSOparameters %Function defined by the participant
         No_solutions=deParameters.I_NP; 
+       case 10
+        addpath('HFEABC')
+        algorithm='HFEABC'; %'The participants should include their algorithm here'
+        HFEABCparameters %Function defined by the participant
+        No_solutions=hfeabcParameters.FoodNumber; 
          %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
          %Participants can include their algorithms here
          %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -148,6 +154,12 @@ ResDB=struc([]);
                     ResDB(iRuns).fitVector, ...
                     ResDB(iRuns).Best_otherInfo] =... 
                     ajso(deParameters,caseStudyData,otherParameters,lowerB,upperB);
+                case 10
+                    [ResDB(iRuns).Fit_and_p, ...
+                    ResDB(iRuns).sol, ...
+                    ResDB(iRuns).fitVector, ...
+                    ResDB(iRuns).Best_otherInfo] =... 
+                   runHFEABC(hfeabcParameters,caseStudyData,otherParameters,lowerB,upperB);
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     %Your algorithm can be put here
                     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
