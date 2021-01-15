@@ -1,0 +1,83 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% GECAD - GECCO and CEC 2019 Competition: Evolutionary Computation in Uncertain Environments: A Smart Grid Application 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% ALGORITMH: HL_PS_VNSO
+%HYBRID LEVY PARTICLE SWARM VARIABLE NEIGHBORHOOD SEARCH OPTIMIZATION
+%% Developers: 
+% Dharmesh A. Dabhi, Assistant Professor, M & V Patel Department of Electrical Engineering, CSPIT,
+% CHARUSAT UNIVERSITY,CHANGA, Gujarat, INDIA
+% Kartik S. Pandya, Professor, M & V Patel Department of Electrical Engineering, CSPIT,
+% CHARUSAT UNIVERSITY,CHANGA, Gujarat, INDIA
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% THIS SCRIPT IS BASED ON THE WINNER CODES IN THE TEST BED 2 ON THE
+% IEEE 2014 OPF problems (Competition & panel): Differential Evolutionary Particle Swarm Optimization (DEEPSO)  
+% http://sites.ieee.org/psace-mho/panels-and-competitions-2014-opf-problems/
+% The codes have been modified by the developers
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+function [ new_vel ] = HL_PS_VNSO_COMPUTE_NEW_VEL( pos, gbest, fit, numGBestSaved, memGBestFit, memGBest, vel, Vmin, Vmax, weights, communicationProbability,D )
+
+
+% Select subset of particles to sample myBestPos from
+% Get the index of the best particles ever visited that have a fitness less
+% than or equal to the fitness of particle i
+tmpMemoryVect = zeros( 1, numGBestSaved );
+tmpMemoryVectSize = 0;
+for i = 1 : numGBestSaved
+    if memGBestFit( 1, i ) <= fit
+        tmpMemoryVectSize = tmpMemoryVectSize + 1;
+        tmpMemoryVect( 1, tmpMemoryVectSize ) = i;
+    end
+end
+tmpMemoryVect = tmpMemoryVect( 1, 1:tmpMemoryVectSize );
+% Sample every entry of myBestPos using the subset - Pb-rnd
+myBestPos = rand( 1, D );
+tmpIndexMemoryVect = randsample( tmpMemoryVectSize, D, true );
+for i = 1 : D
+    myBestPos( 1, i ) = memGBest( tmpMemoryVect( 1, tmpIndexMemoryVect( i ) ), i );
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Compute memory term
+
+memoryTerm =  (myBestPos - pos );
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%       Kbest1 = gbest -pos;
+% communicationProbabilityMatrix = rand( 1, D ) < communicationProbability;
+% memoryTerm = memoryTerm .* communicationProbabilityMatrix;
+%   cooperationTerm1=weights( 3 ).*(Kbest1* ( 1 + weights( 4 ) * normrnd( 0, 1 ) )-pos);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Compute cooperation term
+% Sample normally distributed number to perturbate the best position
+ cooperationTerm = weights( 3 ) * ( gbest  - pos );
+% communicationProbabilityMatrix = rand( 1, D ) < communicationProbability;
+%  cooperationTerm = cooperationTerm .* communicationProbabilityMatrix;
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Apply levy flight for each particle to enhance global search.
+beta=1; %scalar
+sigma=(gamma(1+2*beta)*sin(pi*beta)/(gamma((1+beta)/2)*beta*2^((beta-3))))^(1/beta);%scalar
+    % This is a simple way of implementing Levy flights
+    % For standard random walks, use step=1;
+    %% Levy flights by Mantegna's algorithm
+    u=rand(1,D)*sigma;
+    v=rand(1,D);
+    step=u./abs(v).^(1/beta); 
+  % In the next equation, the difference factor (s-best) means that 
+    % when the solution is the best solution, it remains unchanged.     
+    stepsize=unifrnd(0.2,0.2,1).*step.*(pos-gbest);
+   % stepsize=Levy_constant*step.*(pos-gbest);
+    levystep=stepsize;
+%end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Compute velocity
+new_vel =  1.4.*(memoryTerm +cooperationTerm+levystep);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Check velocity limits
+new_vel = ( new_vel > Vmax ) .*(Vmax-Vmin)/10 + ( new_vel <= Vmax ) .* new_vel;
+new_vel = ( new_vel < Vmin ) .*10.* Vmin + ( new_vel >= Vmin ) .* new_vel;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+end

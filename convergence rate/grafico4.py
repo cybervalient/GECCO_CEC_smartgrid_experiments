@@ -100,7 +100,7 @@ AJSO = [0.127783301,
 ]
 
 
-GAAPSO = [-0.731213287,
+GASAPSO = [-0.731213287,
 -0.720475601,
 -0.74295464,
 -0.959732666,
@@ -148,7 +148,7 @@ CUMDANCAUCHY = [-0.176021556,
 
 
 # Labels to use for each line
-line_labels = ["CUMDANCauchy", "ABC-DE", "HFEABC","CE-CMAES","GAAPSO","AJSO"]
+line_labels = ["CUMDANCauchy", "ABC-DE", "HFEABC","CE-CMAES","GASAPSO","AJSO"]
 
 
 l1 = ax.plot(x,CUMDANCAUCHY)[0]
@@ -156,7 +156,7 @@ l2 = ax.plot(x,ABC_DE)[0]
 l3 = ax.plot(x,HFEABC)[0]
 l4 = ax.plot(x,CE_CMAES)[0]
 l5 = ax.plot(x,AJSO)[0]
-l6 = ax.plot(x,GAAPSO)[0]
+l6 = ax.plot(x,GASAPSO)[0]
 
 
 
