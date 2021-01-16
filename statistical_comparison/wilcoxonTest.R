@@ -4,14 +4,14 @@
 #                cybervalient@gmail.com                     #  
 #                         2021                              #
 #############################################################
-source("C://Users//Yoan M//Documents//miproyecto//GECCO_CEC_smartgrid_experiments//more//tests.R")
-source("C://Users//Yoan M//Documents//miproyecto//GECCO_CEC_smartgrid_experiments//more//post_hoc.R")
+source(file.choose()) #Load to tests.R
+source(file.choose()) #Load to post_hoc.R
 library(FSA)
 Wilcoxontest <-function(x,y){
   wilcoxonSignedTest(x,y)
 }
 
-archive<-read.table("C://Users//Yoan M//Documents//miproyecto//GECCO_CEC_smartgrid_experiments//avg_conv_rate.csv", header = TRUE, sep =",")
+archive<-read.table(file.choose(), header = TRUE, sep =",")
 #CUMDANCauchy vs chaotic_deepso
 Wilcoxontest(archive$CUMDANCauchy,archive$chaotic_deepso)
 #CUMDANCauchy vs DESS 

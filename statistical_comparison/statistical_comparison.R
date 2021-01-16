@@ -4,8 +4,12 @@
 #                cybervalient@gmail.com                     #  
 #                         2021                              #
 #############################################################
-
-archive=read.csv("C://Users//Yoan M//Documents//miproyecto//GECCO_CEC_smartgrid_experiments//avg_conv_rate.csv",header=T);
+#install.packages(readr)
+# Cargar el paquete
+library(readr)
+#archive = read_csv(file.choose(),header=T)
+archive = read_csv(file.choose())
+#archive=read_tsv("https://github.com/cybervalient/GECCO_CEC_smartgrid_experiments/tree/master/statistical_comparison/avg_conv_rate.csv")
 str(archive)
 
 #normality test < 100 cases (Shapiro-Wilks Test)

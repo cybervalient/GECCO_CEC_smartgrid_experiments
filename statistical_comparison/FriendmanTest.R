@@ -4,8 +4,8 @@
 #                cybervalient@gmail.com                     #  
 #                         2021                              #
 #############################################################
-source("C://Users//Yoan M//Documents//miproyecto//GECCO_CEC_smartgrid_experiments//more//tests.R")
-source("C://Users//Yoan M//Documents//miproyecto//GECCO_CEC_smartgrid_experiments//more//post_hoc.R")
+source(file.choose()) #Load to tests.R
+source(file.choose()) #Load to post_hoc.R
 library(FSA)
 
 FriendmanTest <-function(dataFile, sep =","){
@@ -95,4 +95,4 @@ FriendmanTest <-function(dataFile, sep =","){
 }
 
 
-FriendmanTest("C://Users//Yoan M//Documents//miproyecto//GECCO_CEC_smartgrid_experiments//avg_conv_rate.csv")
+FriendmanTest(file.choose()) #Load to file .csv
