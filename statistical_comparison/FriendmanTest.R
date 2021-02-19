@@ -96,3 +96,4 @@ FriendmanTest <-function(dataFile, sep =","){
 
 
 FriendmanTest(file.choose()) #Load to file .csv
+
